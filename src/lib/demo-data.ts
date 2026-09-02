@@ -12,6 +12,16 @@ export const demoTenant: Tenant = {
   accent_color: "#FF9500",
   business_mode: "turnos",
   status: "activo",
+  horario_atencion: {
+    lunes: { abierto: true, desde: "09:00", hasta: "18:00" },
+    martes: { abierto: true, desde: "09:00", hasta: "18:00" },
+    miercoles: { abierto: true, desde: "09:00", hasta: "18:00" },
+    jueves: { abierto: true, desde: "09:00", hasta: "18:00" },
+    viernes: { abierto: true, desde: "09:00", hasta: "18:00" },
+    sabado: { abierto: false, desde: "09:00", hasta: "13:00" },
+    domingo: { abierto: false, desde: "09:00", hasta: "13:00" },
+  },
+  cupo_simultaneo: 1,
 };
 
 export const demoSiteContent: SiteContent = {

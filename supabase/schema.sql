@@ -23,6 +23,19 @@ create table if not exists tenants (
     check (business_mode in ('turnos', 'pedidos', 'ninguno')),
   status text not null default 'activo'
     check (status in ('activo', 'pausado', 'cancelado')),
+  -- Parámetros del negocio que el propio cliente edita libremente desde
+  -- /panel/configuracion, sin aprobación de nadie (a diferencia de lo que
+  -- requiere tocar código, que pasa por Fase 4 / Aprobaciones).
+  horario_atencion jsonb not null default '{
+    "lunes":{"abierto":true,"desde":"09:00","hasta":"18:00"},
+    "martes":{"abierto":true,"desde":"09:00","hasta":"18:00"},
+    "miercoles":{"abierto":true,"desde":"09:00","hasta":"18:00"},
+    "jueves":{"abierto":true,"desde":"09:00","hasta":"18:00"},
+    "viernes":{"abierto":true,"desde":"09:00","hasta":"18:00"},
+    "sabado":{"abierto":false,"desde":"09:00","hasta":"13:00"},
+    "domingo":{"abierto":false,"desde":"09:00","hasta":"13:00"}
+  }'::jsonb,
+  cupo_simultaneo integer not null default 1,
   created_at timestamptz not null default now()
 );
 

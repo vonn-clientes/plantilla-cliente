@@ -3,6 +3,17 @@
 
 export type BusinessMode = "turnos" | "pedidos" | "ninguno";
 
+export interface HorarioDia {
+  abierto: boolean;
+  desde: string; // "HH:MM"
+  hasta: string; // "HH:MM"
+}
+
+export type HorarioAtencion = Record<
+  "lunes" | "martes" | "miercoles" | "jueves" | "viernes" | "sabado" | "domingo",
+  HorarioDia
+>;
+
 export interface Tenant {
   id: string;
   slug: string;
@@ -12,6 +23,8 @@ export interface Tenant {
   accent_color: string;
   business_mode: BusinessMode;
   status: "activo" | "pausado" | "cancelado";
+  horario_atencion: HorarioAtencion | null;
+  cupo_simultaneo: number;
 }
 
 export interface SiteContent {

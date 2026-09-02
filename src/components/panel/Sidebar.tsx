@@ -12,6 +12,7 @@ const baseLinks = [
   { href: "/panel/catalogo", label: "Catálogo" },
   { href: "/panel/mensajes", label: "Mensajes" },
   { href: "/panel/empleados", label: "Empleados" },
+  { href: "/panel/configuracion", label: "Configuración" },
   { href: "/panel/soporte", label: "Soporte" },
 ];
 
