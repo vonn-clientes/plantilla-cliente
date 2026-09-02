@@ -20,10 +20,13 @@ export function extractSlugFromHost(host: string | null): string | null {
   if (!host) return null;
 
   const hostname = host.split(":")[0]; // saca el puerto si lo tiene (localhost:3000)
-  const parts = hostname.split(".");
 
-  // localhost / IPs / previews de Vercel sin subdominio propio -> sin tenant
-  if (hostname === "localhost" || parts.length < 3) return null;
+  // Dominios de Vercel (previews y el *.vercel.app por defecto) no son un
+  // subdominio real de cliente -> sin tenant (cae al demo).
+  if (hostname === "localhost" || hostname.endsWith(".vercel.app")) return null;
+
+  const parts = hostname.split(".");
+  if (parts.length < 3) return null;
 
   const [subdomain] = parts;
   if (subdomain === "www" || subdomain === "vonn") return null;
