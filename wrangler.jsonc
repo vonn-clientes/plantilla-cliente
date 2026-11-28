@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "vonn-plantilla-cliente",
+  "name": "plantilla-web",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-27",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
