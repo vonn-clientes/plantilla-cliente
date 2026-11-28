@@ -1,5 +1,5 @@
 // Tipos compartidos entre el sitio público y el panel. Reflejan las tablas
-// de supabase/schema.sql — si cambiás el schema, actualizá esto también.
+// de db/schema.neon.sql — si cambiás el schema, actualizá esto también.
 
 export type BusinessMode = "turnos" | "pedidos" | "ninguno";
 
@@ -45,7 +45,7 @@ export interface CatalogItem {
   tenant_id: string;
   name: string;
   description: string | null;
-  price: number | null;
+  price: number | string | null; // numeric de Postgres; number en demo
   image_url: string | null;
   category: string | null;
   duration_minutes: number | null;
@@ -89,7 +89,7 @@ export interface Order {
   customer_name: string;
   customer_phone: string;
   status: "pendiente" | "preparando" | "listo" | "entregado" | "cancelado";
-  total: number;
+  total: number | string; // numeric de Postgres
   notes: string | null;
   created_at: string;
 }

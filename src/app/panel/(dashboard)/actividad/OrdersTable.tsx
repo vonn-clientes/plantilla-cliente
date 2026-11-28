@@ -32,7 +32,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           <tr key={order.id}>
             <td className="py-3 pr-4 vonn-text-cuerpo">{order.customer_name}</td>
             <td className="py-3 pr-4 vonn-text-cuerpo text-ink-muted">{order.customer_phone}</td>
-            <td className="py-3 pr-4 vonn-text-cuerpo">${order.total.toLocaleString("es-AR")}</td>
+            <td className="py-3 pr-4 vonn-text-cuerpo">${Number(order.total).toLocaleString("es-AR")}</td>
             <td className="py-3">
               <StatusSelect
                 value={order.status}

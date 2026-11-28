@@ -1,24 +1,23 @@
 import { requireMembership } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { queryOne } from "@/lib/db";
 import { PageHeader } from "@/components/panel/PageHeader";
 import Link from "next/link";
 
 export default async function DashboardHome() {
   const membership = await requireMembership();
-  const supabase = await createClient();
 
-  const [{ count: unreadMessages }, { count: openTickets }] = await Promise.all([
-    supabase
-      .from("contact_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", membership.tenant.id)
-      .eq("is_read", false),
-    supabase
-      .from("support_tickets")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", membership.tenant.id)
-      .eq("status", "abierto"),
+  const [messages, tickets] = await Promise.all([
+    queryOne<{ count: number }>(
+      "select count(*)::int as count from contact_messages where tenant_id = $1 and is_read = false",
+      [membership.tenant.id],
+    ),
+    queryOne<{ count: number }>(
+      "select count(*)::int as count from support_tickets where tenant_id = $1 and status = 'abierto'",
+      [membership.tenant.id],
+    ),
   ]);
+  const unreadMessages = messages?.count;
+  const openTickets = tickets?.count;
 
   const cards = [
     { label: "Mensajes sin leer", value: unreadMessages ?? 0, href: "/panel/mensajes" },

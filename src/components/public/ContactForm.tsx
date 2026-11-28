@@ -5,9 +5,9 @@ import { sendContactMessage, type ContactFormState } from "@/app/actions/contact
 
 const initialState: ContactFormState = { ok: false, message: "" };
 
-export function ContactForm({ tenantId }: { tenantId: string }) {
+export function ContactForm() {
   const [state, formAction, pending] = useActionState(
-    sendContactMessage.bind(null, tenantId),
+    sendContactMessage,
     initialState
   );
 

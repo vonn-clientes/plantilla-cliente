@@ -1,5 +1,5 @@
 import { requireMembership } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { PageHeader } from "@/components/panel/PageHeader";
 import { BookingsTable } from "./BookingsTable";
 import { OrdersTable } from "./OrdersTable";
@@ -10,20 +10,17 @@ export default async function ActividadPage() {
   const membership = await requireMembership();
   if (membership.tenant.business_mode === "ninguno") redirect("/panel");
 
-  const supabase = await createClient();
   const isTurnos = membership.tenant.business_mode === "turnos";
 
-  const { data } = isTurnos
-    ? await supabase
-        .from("bookings")
-        .select("*")
-        .eq("tenant_id", membership.tenant.id)
-        .order("scheduled_at", { ascending: true })
-    : await supabase
-        .from("orders")
-        .select("*")
-        .eq("tenant_id", membership.tenant.id)
-        .order("created_at", { ascending: false });
+  const data = isTurnos
+    ? await query<Booking>(
+        "select * from bookings where tenant_id = $1 order by scheduled_at asc",
+        [membership.tenant.id],
+      )
+    : await query<Order>(
+        "select * from orders where tenant_id = $1 order by created_at desc",
+        [membership.tenant.id],
+      );
 
   return (
     <>

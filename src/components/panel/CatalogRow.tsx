@@ -54,7 +54,7 @@ export function CatalogRow({ item }: { item: CatalogItem }) {
       <td className="py-3 pr-4 vonn-text-cuerpo">{item.name}</td>
       <td className="py-3 pr-4 vonn-text-cuerpo text-ink-muted">{item.category || "—"}</td>
       <td className="py-3 pr-4 vonn-text-cuerpo">
-        {item.price != null ? `$${item.price.toLocaleString("es-AR")}` : "—"}
+        {item.price != null ? `$${Number(item.price).toLocaleString("es-AR")}` : "—"}
       </td>
       <td className="py-3 pr-4">
         <button

@@ -5,7 +5,7 @@ import { WhatsappButton } from "@/components/public/WhatsappButton";
 import { notFound } from "next/navigation";
 
 // Esta es la página pública del comercio (ej: barberia-lopez.vonn.com.ar).
-// Todo el contenido sale de site_content/catalog_items en Supabase, filtrado
+// Todo el contenido sale de site_content/catalog_items en Neon, filtrado
 // por tenant — así una sola plantilla sirve para todos los clientes.
 export default async function PublicSite() {
   const slug = await resolveTenantSlug();
@@ -78,7 +78,7 @@ export default async function PublicSite() {
                 <div className="flex items-center justify-between mt-2">
                   {item.price != null && (
                     <span className="vonn-text-subtitulo text-primary">
-                      ${item.price.toLocaleString("es-AR")}
+                      ${Number(item.price).toLocaleString("es-AR")}
                     </span>
                   )}
                   {item.duration_minutes && (
@@ -121,7 +121,7 @@ export default async function PublicSite() {
       {/* ---- Contacto ---- */}
       <section className="px-6 py-16 bg-canvas-muted flex flex-col items-center gap-6">
         <h2 className="vonn-text-titulo text-center">Contactanos</h2>
-        <ContactForm tenantId={tenant.id} />
+        <ContactForm />
       </section>
 
       <footer className="px-6 py-8 text-center">

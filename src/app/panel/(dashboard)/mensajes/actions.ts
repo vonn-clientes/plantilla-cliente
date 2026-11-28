@@ -1,16 +1,14 @@
 "use server";
 
 import { requireMembership } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 export async function markMessageRead(messageId: string) {
   const membership = await requireMembership();
-  const supabase = await createClient();
-  await supabase
-    .from("contact_messages")
-    .update({ is_read: true })
-    .eq("id", messageId)
-    .eq("tenant_id", membership.tenant.id);
+  await query(
+    "update contact_messages set is_read = $1 where id = $2 and tenant_id = $3",
+    [true, messageId, membership.tenant.id],
+  );
   revalidatePath("/panel/mensajes");
 }

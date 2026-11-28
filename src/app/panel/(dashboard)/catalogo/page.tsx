@@ -1,5 +1,5 @@
 import { requireMembership } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { query } from "@/lib/db";
 import { PageHeader } from "@/components/panel/PageHeader";
 import { CatalogRow } from "@/components/panel/CatalogRow";
 import { addCatalogItem } from "./actions";
@@ -7,15 +7,11 @@ import type { CatalogItem } from "@/lib/types";
 
 export default async function CatalogoPage() {
   const membership = await requireMembership();
-  const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("catalog_items")
-    .select("*")
-    .eq("tenant_id", membership.tenant.id)
-    .order("sort_order", { ascending: true });
-
-  const items = (data as CatalogItem[]) ?? [];
+  const items = await query<CatalogItem>(
+    "select * from catalog_items where tenant_id = $1 order by sort_order asc",
+    [membership.tenant.id],
+  );
   const field =
     "w-full rounded-sm border border-line bg-canvas px-3 py-2 vonn-text-cuerpo outline-none focus:border-primary";
 
