@@ -1,15 +1,22 @@
--- ==========================================================================
--- VONN — Esquema de base de datos multi-cliente (multi-tenant)
--- Un solo proyecto Supabase compartido por TODOS los clientes de VONN.
--- Cada tabla que guarda datos de un cliente tiene una columna tenant_id,
--- y Row Level Security (RLS) se encarga de que un cliente jamás pueda
--- leer ni escribir datos de otro, aunque compartan la misma base.
---
--- Cómo aplicar este archivo: Supabase Dashboard → SQL Editor → pegar y
--- correr todo. También sirve como referencia versionada en el repo.
--- ==========================================================================
+-- Esquema Neon (plantilla-web). Reemplaza supabase/schema.sql. Sin Supabase Auth ni PostgREST.
+create extension if not exists pgcrypto;
+create extension if not exists citext;
 
--- --------------------------------------------------------------------------
+-- Usuarios del panel (login propio) y sesiones
+create table if not exists app_users (
+  id uuid primary key default gen_random_uuid(),
+  email citext unique not null,
+  password_hash text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists app_sessions (
+  id text primary key,                    -- sha256 del token de la cookie
+  user_id uuid not null references app_users(id) on delete cascade,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists app_sessions_user_idx on app_sessions(user_id);
+
 -- 1. TENANTS — un registro por cliente de VONN (una barbería, un kiosco, etc.)
 -- --------------------------------------------------------------------------
 create table if not exists tenants (
@@ -43,12 +50,12 @@ comment on table tenants is 'Un registro por cliente de VONN. slug define su sub
 
 -- --------------------------------------------------------------------------
 -- 2. TENANT_MEMBERS — quién puede entrar al panel de cada cliente, y con qué rol
---    Vincula usuarios reales de Supabase Auth (auth.users) con un tenant.
+--    Vincula usuarios de app_users con un tenant.
 -- --------------------------------------------------------------------------
 create table if not exists tenant_members (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
-  user_id uuid references auth.users(id) on delete set null,
+  user_id uuid references app_users(id) on delete set null,
   invited_email text not null,                  -- se guarda aunque el usuario todavía no haya aceptado la invitación
   role text not null default 'empleado'
     check (role in ('owner', 'empleado')),
@@ -59,38 +66,6 @@ create table if not exists tenant_members (
 );
 
 comment on table tenant_members is 'Accesos al panel: quién pertenece a qué tenant, con qué rol (owner/empleado).';
-
--- --------------------------------------------------------------------------
--- Funciones auxiliares para las políticas de seguridad (RLS)
--- --------------------------------------------------------------------------
-create or replace function is_tenant_member(check_tenant_id uuid)
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select exists (
-    select 1 from tenant_members
-    where tenant_id = check_tenant_id
-      and user_id = auth.uid()
-      and status = 'activo'
-  );
-$$;
-
-create or replace function is_tenant_owner(check_tenant_id uuid)
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select exists (
-    select 1 from tenant_members
-    where tenant_id = check_tenant_id
-      and user_id = auth.uid()
-      and status = 'activo'
-      and role = 'owner'
-  );
-$$;
 
 -- --------------------------------------------------------------------------
 -- 3. SITE_CONTENT — el contenido editable del sitio público (1 fila por tenant)
@@ -190,7 +165,7 @@ create table if not exists contact_messages (
 create table if not exists support_tickets (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references tenants(id) on delete cascade,
-  created_by uuid references auth.users(id) on delete set null,
+  created_by uuid references app_users(id) on delete set null,
   category text,                                  -- respuesta rápida del bot filtro (ej: "no carga una imagen")
   description text not null,
   status text not null default 'abierto'
@@ -198,130 +173,18 @@ create table if not exists support_tickets (
   created_at timestamptz not null default now()
 );
 
--- ==========================================================================
--- ROW LEVEL SECURITY — activar en todas las tablas con datos de clientes
--- ==========================================================================
-alter table tenants enable row level security;
-alter table tenant_members enable row level security;
-alter table site_content enable row level security;
-alter table catalog_items enable row level security;
-alter table bookings enable row level security;
-alter table orders enable row level security;
-alter table order_items enable row level security;
-alter table contact_messages enable row level security;
-alter table support_tickets enable row level security;
 
--- ---- tenants: lectura pública (el sitio necesita mostrar nombre/logo/colores),
---      escritura solo si sos miembro activo de ese tenant.
-create policy "tenants: lectura pública" on tenants
-  for select using (true);
-
-create policy "tenants: solo miembros editan" on tenants
-  for update using (is_tenant_member(id));
-
--- ---- tenant_members: solo lo ve/gestiona gente del propio tenant, y
---      solo el owner puede agregar o dar de baja empleados.
-create policy "tenant_members: los propios miembros ven la lista" on tenant_members
-  for select using (is_tenant_member(tenant_id));
-
-create policy "tenant_members: el owner invita" on tenant_members
-  for insert with check (is_tenant_owner(tenant_id));
-
-create policy "tenant_members: el owner edita roles/estado" on tenant_members
-  for update using (is_tenant_owner(tenant_id));
-
-create policy "tenant_members: el owner revoca accesos" on tenant_members
-  for delete using (is_tenant_owner(tenant_id));
-
--- ---- site_content: lectura pública (es el contenido del sitio), edición
---      solo para miembros del tenant.
-create policy "site_content: lectura pública" on site_content
-  for select using (true);
-
-create policy "site_content: miembros editan" on site_content
-  for all using (is_tenant_member(tenant_id))
-  with check (is_tenant_member(tenant_id));
-
--- ---- catalog_items: lectura pública, escritura solo miembros.
-create policy "catalog_items: lectura pública" on catalog_items
-  for select using (active = true or is_tenant_member(tenant_id));
-
-create policy "catalog_items: miembros administran" on catalog_items
-  for all using (is_tenant_member(tenant_id))
-  with check (is_tenant_member(tenant_id));
-
--- ---- bookings: cualquiera puede CREAR un turno desde el sitio público,
---      pero solo los miembros del tenant pueden verlos/administrarlos.
-create policy "bookings: cualquiera puede reservar" on bookings
-  for insert with check (true);
-
-create policy "bookings: miembros ven y administran" on bookings
-  for select using (is_tenant_member(tenant_id));
-
-create policy "bookings: miembros actualizan" on bookings
-  for update using (is_tenant_member(tenant_id));
-
--- ---- orders / order_items: mismo criterio que bookings.
-create policy "orders: cualquiera puede pedir" on orders
-  for insert with check (true);
-
-create policy "orders: miembros ven y administran" on orders
-  for select using (is_tenant_member(tenant_id));
-
-create policy "orders: miembros actualizan" on orders
-  for update using (is_tenant_member(tenant_id));
-
-create policy "order_items: se crean junto al pedido" on order_items
-  for insert with check (true);
-
-create policy "order_items: miembros ven" on order_items
-  for select using (
-    exists (
-      select 1 from orders
-      where orders.id = order_items.order_id
-        and is_tenant_member(orders.tenant_id)
-    )
-  );
-
--- ---- contact_messages: cualquiera puede escribir desde el formulario público,
---      solo los miembros del tenant leen la bandeja.
-create policy "contact_messages: cualquiera puede escribir" on contact_messages
-  for insert with check (true);
-
-create policy "contact_messages: miembros leen" on contact_messages
-  for select using (is_tenant_member(tenant_id));
-
-create policy "contact_messages: miembros marcan como leído" on contact_messages
-  for update using (is_tenant_member(tenant_id));
-
--- ---- support_tickets: solo miembros del tenant (esto vive dentro del panel
---      privado, nunca en la vista pública).
-create policy "support_tickets: miembros crean" on support_tickets
-  for insert with check (is_tenant_member(tenant_id));
-
-create policy "support_tickets: miembros ven" on support_tickets
-  for select using (is_tenant_member(tenant_id));
-
--- ==========================================================================
--- Trigger: cuando alguien confirma su cuenta (Supabase Auth), si su email
--- coincide con una invitación pendiente en tenant_members, la activa y la
--- vincula a su user_id automáticamente.
--- ==========================================================================
-create or replace function link_invited_member()
-returns trigger
-language plpgsql
-security definer
-as $$
+-- Al crearse un usuario, activa su invitación pendiente (mismo comportamiento que antes)
+create or replace function link_invited_member() returns trigger language plpgsql as $$
 begin
-  update tenant_members
-  set user_id = new.id, status = 'activo'
-  where invited_email = new.email
-    and status = 'invitado';
+  update tenant_members set user_id = new.id, status = 'activo'
+  where invited_email = new.email and status = 'invitado';
   return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
+end; $$;
+drop trigger if exists on_app_user_created on app_users;
+create trigger on_app_user_created after insert on app_users
   for each row execute function link_invited_member();
+
+-- Seed de demo (sin datos reales)
+insert into tenants (slug, business_name, business_mode) values ('demo','Barbería Demo','turnos') on conflict do nothing;
+-- TODO endurecimiento: rol de app sin BYPASSRLS + RLS con current_setting('app.tenant_id'). Hoy el aislamiento es por filtro explícito en el código.

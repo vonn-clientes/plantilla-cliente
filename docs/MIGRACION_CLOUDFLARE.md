@@ -2,7 +2,9 @@
 
 Worker: `plantilla-web` (OpenNext). Build: `npx opennextjs-cloudflare build`. Deploy: `npx wrangler deploy`.
 
-Variables de build (Cloudflare): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY.
-Secretos de runtime: SUPABASE_SERVICE_ROLE_KEY (por Terminal, nunca en el repo).
+En la rama local `neon`, la base usa `DATABASE_URL` solo en servidor/runtime.
+El build no necesita credenciales y el sitio público conserva el modo demo.
+Ver [NEON_NOTAS.md](NEON_NOTAS.md) para el SQL adicional y la autenticación propia.
 
-Estado: rama de prueba, sin merge a main. Vercel sigue sirviendo la plantilla. Antes de main: regenerar package-lock.json.
+Estado: rama de prueba, sin merge a main. No se modificaron servicios externos
+ni se ejecutaron comandos de deploy. `package-lock.json` permanece sin versionar.
