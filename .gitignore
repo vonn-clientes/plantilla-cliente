@@ -42,3 +42,7 @@ next-env.d.ts
 # cloudflare
 .open-next
 .wrangler
+
+# Ejemplo sin credenciales; esta rama no versiona lockfile npm.
+!.env.example
+/package-lock.json

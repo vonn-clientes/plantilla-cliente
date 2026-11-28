@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 // En desarrollo local (localhost, o preview de Vercel/Cloudflare): no hay subdominio
 // real, así que se usa NEXT_PUBLIC_DEMO_TENANT_SLUG como cliente de prueba.
 //
-// El header x-tenant-slug lo agrega el middleware (ver src/middleware.ts).
+// El header x-tenant-slug lo agrega el middleware (ver src/proxy.ts).
 export async function resolveTenantSlug(): Promise<string> {
   const headerList = await headers();
   const fromMiddleware = headerList.get("x-tenant-slug");

@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
 import { extractSlugFromHost } from "@/lib/tenant/resolve";
 
 export async function proxy(request: NextRequest) {
@@ -8,13 +7,14 @@ export async function proxy(request: NextRequest) {
   // REQUEST (no alcanza con ponerlo en la respuesta al navegador).
   const requestHeaders = new Headers(request.headers);
   const slug = extractSlugFromHost(request.headers.get("host"));
+  requestHeaders.delete("x-tenant-slug"); // No confiar en headers enviados por el cliente.
   if (slug) {
     requestHeaders.set("x-tenant-slug", slug);
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
-  return updateSession(request, response);
+  return response;
 }
 
 export const config = {

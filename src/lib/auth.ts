@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import "server-only";
+import { queryOne } from "@/lib/db";
+import { readSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { TenantMember, Tenant } from "@/lib/types";
 
@@ -9,32 +11,19 @@ export type Membership = {
   role: TenantMember["role"];
 };
 
-// Se usa al principio de cada página del panel: si no hay sesión, manda a
-// /panel/login. Si hay sesión pero el usuario no pertenece a ningún tenant
-// activo, manda a /panel/sin-acceso. Si todo está bien, devuelve con qué
-// tenant y con qué rol está entrando.
+// El tenant privado se descubre por el usuario de la sesión, nunca por
+// un id enviado desde el formulario. Esta consulta inicia el aislamiento.
 export async function requireMembership(): Promise<Membership> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await readSession();
   if (!user) redirect("/panel/login");
 
-  const { data: membership } = await supabase
-    .from("tenant_members")
-    .select("role, tenant:tenants(*)")
-    .eq("user_id", user!.id)
-    .eq("status", "activo")
-    .limit(1)
-    .maybeSingle();
-
-  if (!membership || !membership.tenant) redirect("/panel/sin-acceso");
-
-  return {
-    userId: user!.id,
-    email: user!.email ?? "",
-    tenant: membership.tenant as unknown as Tenant,
-    role: membership.role as TenantMember["role"],
-  };
+  const membership = await queryOne<{ role: TenantMember["role"]; tenant: Tenant }>(
+    `select m.role, row_to_json(t) as tenant
+     from tenant_members m join tenants t on t.id = m.tenant_id
+     where m.user_id = $1 and m.status = 'activo' and t.status = 'activo'
+     order by m.created_at, m.id limit 1`,
+    [user.id],
+  );
+  if (!membership) redirect("/panel/sin-acceso");
+  return { userId: user.id, email: user.email, tenant: membership.tenant, role: membership.role };
 }
